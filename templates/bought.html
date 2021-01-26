@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+    <h2> You have requested to buy {{number}} shares of {{name}} ({{stock}}) @ ${{price}} per share, totalling ${{total}}. </h2>
+    <p> Your current balance is ${{userCash}}</p>
+    <p> Your new balance will be ${{balance}}. </p>
+    <p>{{check}}</p>
+{% endblock %}
