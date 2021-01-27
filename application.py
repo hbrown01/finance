@@ -1,4 +1,4 @@
-#pk_b1dd9cac623148b8b7b49962402a7d07
+ #pk_b1dd9cac623148b8b7b49962402a7d07
 #CREATE TABLE 'purchases' ('id' integer PRIMARY KEY NOT NULL, 'user_id' integer, 'symbol' text, 'share_price' real, 'num_shares' integer, 'total_cost' , 'timestamp' )
 import os
 import datetime
@@ -54,14 +54,18 @@ def index():
     cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
     cashVal = float(cash[0]["cash"])
 
-    tot = db.execute("SELECT total_cost FROM purchases WHERE user_id = ?", session["user_id"])
+    tot = 0
+    for x in range(0,(len(groups))):
+        symbol = groups[x]["symbol"]
+        num = groups[x]["SUM"]
+        bought = lookup(symbol)
+        price = bought["price"]
+        totPrice = price * num
+        tot+=totPrice
 
-    userTot = 0
+    GRNDTOT = tot + cashVal
 
-    for x in range(tot):
-        userTot = userTot + int(tot[x]["total_cost"])
-
-    return render_template("index.html", groups=groups, cashVal=cashVal, tot = userTot)
+    return render_template("index.html", groups=groups, cashVal=cashVal, GRNDTOT = GRNDTOT)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -172,8 +176,22 @@ def register():
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
 def sell():
-    """Sell shares of stock"""
-    return apology("TODO")
+    groups = db.execute("SELECT symbol FROM purchases WHERE user_id = ? GROUP BY symbol", session["user_id"])
+    if request.method == "POST":
+        stock = request.form.get("stock")
+        number = request.form.get("numShares")
+        bought = lookup(stock)
+        price = bought["price"]
+        totPrice = price * number
+        maxNum = db.execute("SELECT SUM(num_shares) FROM purchases WHERE user_id = ? AND symbol = stock GROUP BY symbol", session["user_id"])
+
+        if number > maxNum:
+            return apology("Trying to sell more stock than you have?")
+        else:
+            return render_template("sellconfirmation.html", stock = stock, number = number, price = price, totPrice = totPrice)
+
+
+    return render_template("sell.html", groups = groups)
 
 
 def errorhandler(e):
