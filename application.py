@@ -74,6 +74,7 @@ def buy():
     if request.method == "POST":
         currentTime = datetime.datetime.now()
         stock = request.form.get("stock")
+        stock = stock.upper()
         number = request.form.get("shares")
         bought = lookup(stock)
         price = bought["price"]
@@ -178,18 +179,30 @@ def register():
 def sell():
     groups = db.execute("SELECT symbol FROM purchases WHERE user_id = ? GROUP BY symbol", session["user_id"])
     if request.method == "POST":
+        currentTime = datetime.datetime.now()
         stock = request.form.get("stock")
         number = request.form.get("numShares")
         bought = lookup(stock)
         price = bought["price"]
-        totPrice = price * number
-        maxNum = db.execute("SELECT SUM(num_shares) FROM purchases WHERE user_id = ? AND symbol = stock GROUP BY symbol", session["user_id"])
 
-        if number > maxNum:
+        cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+        userCash = cash[0]["cash"]
+
+        totPrice = float(price) * int(number)
+        balance = float(userCash) + float(totPrice)
+        maxNum = db.execute("SELECT SUM(num_shares) FROM purchases WHERE user_id = ? AND symbol = ? GROUP BY symbol", session["user_id"], stock)
+
+        if int(number) > int(maxNum[0]["SUM(num_shares)"]):
             return apology("Trying to sell more stock than you have?")
+        elif totPrice <= 0:
+            return apology("Your shares are worthless!")
         else:
-            return render_template("sellconfirmation.html", stock = stock, number = number, price = price, totPrice = totPrice)
-
+            sale = db.execute("INSERT INTO sales (user_id, symbol, share_price, num_shares, total_value, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock, price, number, totPrice, currentTime)
+            balance = db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
+            #getMax = db.execute("SELECT num_shares FROM purchases WHERE user_id = ? AND id = MAX(id)", session["user_id"])
+                
+            #remove = db.execute("UPDATE purchases SET num_shares = ? WHERE id = MAX(id)", )
+            return render_template("sellconfirmation.html", stock = stock, number = number, price = price, totPrice = totPrice, balance = balance)
 
     return render_template("sell.html", groups = groups)
 

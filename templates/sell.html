@@ -1,17 +1,14 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Quote
+    Sell
 {% endblock %}
 
 {% block main %}
-    <form action="/buy" method="post">
-        <select name="stock">
-            <option disabled selected value="">Stock</option>
-            {% for x in groups %}
-                <option value="{{ x }}">{{ x.symbol }}</option>
-            {% endfor %}
-        </select>
+    <form action="/sell" method="post">
+        <div class="form-group">
+            <input autocomplete="off" autofocus class="form-control" name="stock" placeholder="Symbol" type="text">
+        </div>
         <div class="form-group">
             <input autocomplete="off" autofocus class="form-control" name="numShares" placeholder="No. of Shares" type="text">
         </div>
