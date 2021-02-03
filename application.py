@@ -49,7 +49,7 @@ if not os.environ.get("API_KEY"):
 @app.route("/")
 @login_required
 def index():
-    groups = db.execute("SELECT symbol, SUM(num_shares) AS sum FROM purchases WHERE user_id = ? GROUP BY symbol", session["user_id"])
+    groups = db.execute("SELECT symbol, SUM(num_shares) AS sum FROM transactions WHERE user_id = ? GROUP BY symbol HAVING SUM(num_shares) > 0", session["user_id"])
 
     cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
     cashVal = float(cash[0]["cash"])
@@ -84,13 +84,15 @@ def buy():
         cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
         userCash = cash[0]["cash"]
 
+        transType = "BUY"
+
         total = float(bought["price"]*int(number))
         balance = userCash - total
         if balance < total:
             return apology("Your balance is too low")
         else:
             #update database
-            purchase = db.execute("INSERT INTO purchases (user_id, symbol, share_price, num_shares, total_cost, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock, price, number, total, currentTime)
+            purchase = db.execute("INSERT INTO transactions (user_id, symbol, share_price, num_shares, total_cost, timestamp, trans_type) VALUES(?, ?, ?, ?, ?, ?, ?)", session["user_id"], stock, price, number, total, currentTime, transType)
 
             newBalance = db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
             #update purchases table on finance database
@@ -177,31 +179,38 @@ def register():
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
 def sell():
-    groups = db.execute("SELECT symbol FROM purchases WHERE user_id = ? GROUP BY symbol", session["user_id"])
+    groups = db.execute("SELECT symbol FROM transactions WHERE user_id = ? GROUP BY symbol", session["user_id"])
     if request.method == "POST":
         currentTime = datetime.datetime.now()
         stock = request.form.get("stock")
+        stock = stock.upper()
         number = request.form.get("numShares")
         bought = lookup(stock)
         price = bought["price"]
+        transType = "SELL"
 
         cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
         userCash = cash[0]["cash"]
 
         totPrice = float(price) * int(number)
         balance = float(userCash) + float(totPrice)
-        maxNum = db.execute("SELECT SUM(num_shares) FROM purchases WHERE user_id = ? AND symbol = ? GROUP BY symbol", session["user_id"], stock)
+        maxNum = db.execute("SELECT SUM(num_shares) FROM transactions WHERE user_id = ? AND symbol = ? GROUP BY symbol", session["user_id"], stock)
 
         if int(number) > int(maxNum[0]["SUM(num_shares)"]):
             return apology("Trying to sell more stock than you have?")
         elif totPrice <= 0:
             return apology("Your shares are worthless!")
         else:
-            sale = db.execute("INSERT INTO sales (user_id, symbol, share_price, num_shares, total_value, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock, price, number, totPrice, currentTime)
-            balance = db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
-            #getMax = db.execute("SELECT num_shares FROM purchases WHERE user_id = ? AND id = MAX(id)", session["user_id"])
-                
-            #remove = db.execute("UPDATE purchases SET num_shares = ? WHERE id = MAX(id)", )
+            number = 0 - int(number)
+            totPrice = 0 - totPrice
+
+            sale = db.execute("INSERT INTO transactions (user_id, symbol, share_price, num_shares, total_cost, timestamp, trans_type) VALUES(?, ?, ?, ?, ?, ?, ?)", session["user_id"], stock, price, number, totPrice, currentTime, transType)
+
+            number = 0 - int(number)
+            totPrice = 0 - totPrice
+
+            updateBal = db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
+
             return render_template("sellconfirmation.html", stock = stock, number = number, price = price, totPrice = totPrice, balance = balance)
 
     return render_template("sell.html", groups = groups)

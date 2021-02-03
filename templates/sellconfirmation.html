@@ -6,5 +6,5 @@
 
 {% block main %}
     <h2> You have requested to sell {{number}} shares of {{stock}} @ ${{price}} per share, totalling ${{totPrice}}. </h2>
-    <h3> Your new balance is {{balance}}</h3>
+    <h3> Your new balance is {{"$%.2f" | format(balance)}}</h3>
 {% endblock %}
