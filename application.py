@@ -105,8 +105,10 @@ def buy():
 @app.route("/history")
 @login_required
 def history():
-    """Show history of transactions"""
-    return apology("TODO")
+    groups = db.execute("SELECT * FROM transactions WHERE user_id = ?", session["user_id"])
+    cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+    cashVal = float(cash[0]["cash"])
+    return render_template("history.html", groups=groups, cashVal=cashVal)
 
 
 @app.route("/login", methods=["GET", "POST"])
